@@ -49,7 +49,10 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((oid, done) => {
   app.store.get(oid, async (err, session) => {
     if (err) {
-      done(err, null);
+      return done(err, null);
+    }
+    if (!session) {
+      return done(null, false);
     }
     done(null, session);
   });
@@ -97,10 +100,10 @@ passport.use(
       dbUser = dbUser;
       const sessionUser = {
         oid: profile.oid,
-        id: dbUser._id,
+        id: dbUser._id ?? dbUser.id,
         displayName: profile.displayName,
         name: profile.name,
-        ...dbUser,
+        username: dbUser.username,
       };
       process.nextTick(() => {
         app.store.set(profile.oid, sessionUser, (err) => {
@@ -125,7 +128,10 @@ app.get(
         failureRedirect: '/login',
       })(req, res, next);
     } catch (err) {
-      req.session.destroy();
+      req.session.destroy(() => {
+        req.logout();
+        res.clearCookie('connect.sid');
+      });
       next(err);
     }
   },
@@ -156,6 +162,7 @@ app.post(
 );
 
 app.get('/auth/validate', async (req, res) => {
+  console.log(req.user);
   if (req.user) {
     // Get the latest user updates
     res.header('user', JSON.stringify(req.user));
