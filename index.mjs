@@ -162,14 +162,14 @@ app.post(
 );
 
 app.get('/auth/validate', async (req, res) => {
-  console.log(req.user);
   if (req.user) {
     // Get the latest user updates
     res.header('user', JSON.stringify(req.user));
+    return res.status(200).end();
   } else {
     res.header('user', null);
+    return res.status(403).end();
   }
-  res.status(200).end();
 });
 
 app.listen(port, () => {
