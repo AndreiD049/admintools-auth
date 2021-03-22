@@ -122,28 +122,17 @@ app.use(passport.session());
 app.get(
   '/auth/login',
   (req, res, next) => {
-    try {
-      passport.authenticate('azuread-openidconnect', {
-        response: res,
-        failureRedirect: '/login',
-      })(req, res, next);
-    } catch (err) {
-      req.session.destroy(() => {
-        req.logout();
-        res.clearCookie('connect.sid');
-      });
-      next(err);
-    }
-  },
-  (req, res) => {
-    res.redirect('/');
+    passport.authenticate('azuread-openidconnect', {
+      response: res,
+      failureRedirect: '/login',
+    })(req, res, next);
   },
 );
 
 app.get('/auth/logout', (req, res) => {
   req.session.destroy(function (err) {
-    req.logout();
     res.clearCookie('connect.sid')
+    req.logout();
     res.redirect(config.creds.destroySessionUrl);
   });
 });
@@ -154,10 +143,20 @@ app.post(
     passport.authenticate('azuread-openidconnect', {
       response: res,
       failureRedirect: '/login',
+      failWithError: true,
+    }, (err, user, info) => {
+      if (err || info) {
+        req.logout();
+        res.clearCookie('connect.sid')
+        res.redirect('/login');
+      }
+      if (user) {
+        req.logIn(user, (err) => {
+          if (err) return next(err);
+          return res.redirect('/');
+        })
+      }
     })(req, res, next);
-  },
-  (req, res) => {
-    res.redirect('/');
   },
 );
 
